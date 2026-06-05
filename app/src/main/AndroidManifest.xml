@@ -17,7 +17,7 @@
         android:name=".SalahApp"
         android:allowBackup="true"
         android:label="Salah Times"
-        android:icon="@mipmap/ic_launcher"
+        
         android:theme="@style/Theme.SalahTimes"
         android:supportsRtl="true">
 
