@@ -20,19 +20,27 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.banyadm.islam.alarm.AlarmScheduler
+import com.banyadm.islam.data.PrayerRepository
+import com.banyadm.islam.data.SalahPreferences
+import com.banyadm.islam.worker.PrayerSyncWorker
 import com.google.android.gms.location.LocationServices
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 @Composable
 fun SetupScreen(onSetupComplete: () -> Unit) {
     val context = LocalContext.current
     var step by remember { mutableStateOf(0) }
     var statusText by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
 
     val locationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { perms ->
         if (perms[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
-            step = 2
+            step = 3
         } else {
             statusText = "Location permission is needed to calculate prayer times."
         }
@@ -95,12 +103,12 @@ fun SetupScreen(onSetupComplete: () -> Unit) {
                             notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                         }
                     } else {
-                        step = 2
+                        LaunchedEffect(Unit) { step = 2 }
                     }
                 }
                 2 -> {
                     Text(
-                        text = "Step 2 of 3\n\nAllow location access to calculate accurate prayer times for your area.",
+                        text = "Step 2 of 3\n\nAllow location access to calculate accurate prayer times.",
                         color = Color(0xFFB0BEC5),
                         textAlign = TextAlign.Center,
                         fontSize = 15.sp
@@ -114,7 +122,7 @@ fun SetupScreen(onSetupComplete: () -> Unit) {
                 }
                 3 -> {
                     Text(
-                        text = "Step 3 of 3\n\nDisable battery optimization so alarms are never missed — even in sleep mode.",
+                        text = "Step 3 of 3\n\nDisable battery optimization so alarms are never missed.",
                         color = Color(0xFFB0BEC5),
                         textAlign = TextAlign.Center,
                         fontSize = 15.sp
@@ -134,39 +142,41 @@ fun SetupScreen(onSetupComplete: () -> Unit) {
                         textAlign = TextAlign.Center,
                         fontSize = 15.sp
                     )
+                    CircularProgressIndicator(color = Color(0xFFD4AF37))
                     LaunchedEffect(Unit) {
-                        val fusedClient = LocationServices.getFusedLocationProviderClient(context)
-                        fusedClient.lastLocation.addOnSuccessListener { loc ->
-                            if (loc != null) {
-                                val prefs = com.banyadm.islam.data.SalahPreferences(context)
-                                kotlinx.coroutines.MainScope().launch {
+                        scope.launch {
+                            try {
+                                val fusedClient = LocationServices.getFusedLocationProviderClient(context)
+                                val loc = fusedClient.lastLocation.await()
+                                if (loc != null) {
+                                    val prefs = SalahPreferences(context)
                                     prefs.setLocation(loc.latitude, loc.longitude)
-                                    prefs.setSetupDone(true)
-                                    com.banyadm.islam.worker.PrayerSyncWorker.scheduleTomorrow(context)
-                                    val repo = com.banyadm.islam.data.PrayerRepository()
                                     val method = prefs.calcMethod.first()
-                                    val result = repo.fetchTimes(loc.latitude, loc.longitude, method)
+                                    val result = PrayerRepository().fetchTimes(loc.latitude, loc.longitude, method)
                                     if (result.isSuccess) {
                                         val times = result.getOrThrow()
                                         prefs.cacheTimes(times)
                                         val toggles = prefs.prayerToggles.first()
-                                        com.banyadm.islam.alarm.AlarmScheduler.scheduleAll(context, times, toggles)
+                                        AlarmScheduler.scheduleAll(context, times, toggles)
                                     }
+                                    prefs.setSetupDone(true)
+                                    PrayerSyncWorker.scheduleTomorrow(context)
                                     onSetupComplete()
+                                } else {
+                                    statusText = "Could not get location. Please try again."
+                                    step = 2
                                 }
+                            } catch (e: Exception) {
+                                statusText = "Error: ${e.message}"
+                                step = 2
                             }
                         }
                     }
-                    CircularProgressIndicator(color = Color(0xFFD4AF37))
                 }
             }
 
             if (statusText.isNotEmpty()) {
                 Text(text = statusText, color = Color(0xFFEF9A9A), textAlign = TextAlign.Center)
-            }
-
-            if (step == 2) {
-                LaunchedEffect(step) { step = 3 }
             }
         }
     }
