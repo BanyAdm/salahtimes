@@ -162,7 +162,7 @@ fun SetupScreen(onSetupComplete: () -> Unit) {
                                         PrayerSyncWorker.scheduleTomorrow(context)
                                         onSetupComplete()
                                     } else {
-                                        statusText = "Could not fetch prayer times. Check internet."
+                                        statusText = "Fetch failed: ${result.exceptionOrNull()?.message}"
                                         step = 3
                                     }
                                 } else {
