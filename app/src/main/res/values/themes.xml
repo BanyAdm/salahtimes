@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.SalahTimes" parent="android:Theme.Material.NoTitleBar">
+    <style name="Theme.SalahTimes" parent="android:Theme.DeviceDefault.NoActionBar">
         <item name="android:statusBarColor">#FF0D1B2A</item>
         <item name="android:navigationBarColor">#FF0D1B2A</item>
         <item name="android:windowBackground">#FF0D1B2A</item>
     </style>
-    <style name="Theme.SalahTimes.AlarmScreen" parent="android:Theme.Material.NoTitleBar.Fullscreen">
+    <style name="Theme.SalahTimes.AlarmScreen" parent="android:Theme.DeviceDefault.NoActionBar.Fullscreen">
         <item name="android:statusBarColor">#FF0D1B2A</item>
         <item name="android:windowBackground">#FF0D1B2A</item>
     </style>
