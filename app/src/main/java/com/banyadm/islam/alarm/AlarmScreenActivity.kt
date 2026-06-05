@@ -6,14 +6,17 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
@@ -51,125 +54,87 @@ class AlarmScreenActivity : ComponentActivity() {
                 var maxSnooze by remember { mutableStateOf(3) }
                 var snoozeMins by remember { mutableStateOf(5) }
                 var snoozeUsed by remember { mutableStateOf(0) }
-                val currentTime = remember {
-                    SimpleDateFormat("hh:mm a", Locale.US).format(Date())
-                }
+                val currentTime = remember { SimpleDateFormat("hh:mm a", Locale.US).format(Date()) }
 
                 LaunchedEffect(Unit) {
                     maxSnooze = prefs.snoozeCount.first()
                     snoozeMins = prefs.snoozeDuration.first()
                 }
 
-                // Swipe state
-                var offsetX by remember { mutableStateOf(0f) }
+                // Swipe up state - tracks drag from bottom half
+                var offsetY by remember { mutableStateOf(0f) }
                 val animatedOffset by animateFloatAsState(
-                    targetValue = offsetX,
+                    targetValue = offsetY,
                     animationSpec = spring(stiffness = Spring.StiffnessMedium),
                     label = "swipe"
                 )
 
-                // Glint animation on the swipe arrow
+                // Glint on arrow
                 val glintTransition = rememberInfiniteTransition(label = "glint")
-                val glintX by glintTransition.animateFloat(
-                    initialValue = -100f,
-                    targetValue = 400f,
+                val glintAlpha by glintTransition.animateFloat(
+                    initialValue = 0.2f, targetValue = 1f,
                     animationSpec = infiniteRepeatable(
-                        animation = tween(1800, easing = LinearEasing),
-                        repeatMode = RepeatMode.Restart
-                    ),
-                    label = "glint"
+                        animation = tween(900, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ), label = "glint"
+                )
+                val glintY by glintTransition.animateFloat(
+                    initialValue = 20f, targetValue = -20f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(900, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ), label = "glintY"
                 )
 
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color(0xFF0D1B2A)),
-                    contentAlignment = Alignment.Center
+                        .background(Color(0xFF0D1B2A))
+                        .pointerInput(Unit) {
+                            detectVerticalDragGestures(
+                                onDragEnd = {
+                                    if (offsetY < -180f) {
+                                        finish()
+                                    } else {
+                                        offsetY = 0f
+                                    }
+                                },
+                                onVerticalDrag = { _, dragAmount ->
+                                    // Only allow upward swipe (negative = up)
+                                    offsetY = (offsetY + dragAmount).coerceIn(-400f, 0f)
+                                }
+                            )
+                        }
                 ) {
+                    // Top half — prayer info (moves up with swipe)
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(20.dp),
-                        modifier = Modifier.padding(32.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.TopCenter)
+                            .offset { IntOffset(0, animatedOffset.roundToInt()) }
+                            .padding(top = 80.dp, start = 32.dp, end = 32.dp)
                     ) {
                         Text(currentTime, color = Color(0xFFB0BEC5), fontSize = 18.sp)
-
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(prayerArabic, color = Color(0xFFD4AF37), fontSize = 64.sp, fontWeight = FontWeight.Light)
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = prayerArabic,
-                            color = Color(0xFFD4AF37),
-                            fontSize = 52.sp,
-                            fontWeight = FontWeight.Light
+                            "Time for $prayerName",
+                            color = Color.White, fontSize = 28.sp,
+                            fontWeight = FontWeight.Medium, textAlign = TextAlign.Center
                         )
+                    }
 
-                        Text(
-                            text = "Time for $prayerName",
-                            color = Color.White,
-                            fontSize = 28.sp,
-                            fontWeight = FontWeight.Medium,
-                            textAlign = TextAlign.Center
-                        )
-
-                        Spacer(modifier = Modifier.height(32.dp))
-
-                        // Swipe to dismiss
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(64.dp)
-                                .background(Color(0xFF1A2E40), RoundedCornerShape(32.dp)),
-                            contentAlignment = Alignment.CenterStart
-                        ) {
-                            // Glint sweep
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(
-                                        androidx.compose.ui.graphics.Brush.linearGradient(
-                                            colors = listOf(
-                                                Color.Transparent,
-                                                Color(0x22D4AF37),
-                                                Color.Transparent
-                                            ),
-                                            start = androidx.compose.ui.geometry.Offset(glintX, 0f),
-                                            end = androidx.compose.ui.geometry.Offset(glintX + 100f, 64f)
-                                        ),
-                                        RoundedCornerShape(32.dp)
-                                    )
-                            )
-                            Text(
-                                "Swipe to dismiss →",
-                                color = Color(0xFF546E7A),
-                                fontSize = 14.sp,
-                                modifier = Modifier.fillMaxWidth(),
-                                textAlign = TextAlign.Center
-                            )
-                            // Draggable thumb
-                            Box(
-                                modifier = Modifier
-                                    .offset { IntOffset(animatedOffset.roundToInt(), 0) }
-                                    .padding(6.dp)
-                                    .size(52.dp)
-                                    .background(Color(0xFF1B5E20), RoundedCornerShape(26.dp))
-                                    .pointerInput(Unit) {
-                                        detectHorizontalDragGestures(
-                                            onDragEnd = {
-                                                if (offsetX > 220f) {
-                                                    finish()
-                                                } else {
-                                                    offsetX = 0f
-                                                }
-                                            },
-                                            onHorizontalDrag = { _, dragAmount ->
-                                                offsetX = (offsetX + dragAmount).coerceIn(0f, 280f)
-                                            }
-                                        )
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text("→", color = Color.White, fontSize = 20.sp)
-                            }
-                        }
-
-                        // Snooze
+                    // Bottom half — snooze + swipe up indicator
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Bottom,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = 60.dp, start = 32.dp, end = 32.dp)
+                    ) {
+                        // Snooze button
                         if (snoozeUsed < maxSnooze) {
                             OutlinedButton(
                                 onClick = {
@@ -179,15 +144,46 @@ class AlarmScreenActivity : ComponentActivity() {
                                 },
                                 modifier = Modifier.fillMaxWidth().height(52.dp),
                                 shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = Color(0xFFD4AF37)
-                                )
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFD4AF37))
                             ) {
-                                Text(
-                                    "Snooze ${snoozeMins}min (${maxSnooze - snoozeUsed} left)",
-                                    fontSize = 15.sp
-                                )
+                                Text("Snooze ${snoozeMins}min (${maxSnooze - snoozeUsed} left)", fontSize = 15.sp)
                             }
+                            Spacer(modifier = Modifier.height(32.dp))
+                        }
+
+                        // Swipe up arrow glint
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            // Three stacked arrows with decreasing alpha = motion trail
+                            Icon(
+                                imageVector = Icons.Filled.KeyboardArrowUp,
+                                contentDescription = null,
+                                tint = Color(0xFFD4AF37).copy(alpha = glintAlpha * 0.3f),
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .offset(y = (glintY + 20f).dp)
+                            )
+                            Icon(
+                                imageVector = Icons.Filled.KeyboardArrowUp,
+                                contentDescription = null,
+                                tint = Color(0xFFD4AF37).copy(alpha = glintAlpha * 0.6f),
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .offset(y = glintY.dp)
+                            )
+                            Icon(
+                                imageVector = Icons.Filled.KeyboardArrowUp,
+                                contentDescription = null,
+                                tint = Color(0xFFD4AF37).copy(alpha = glintAlpha),
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .offset(y = (glintY - 20f).dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Swipe up to dismiss",
+                                color = Color(0xFF546E7A),
+                                fontSize = 13.sp
+                            )
                         }
                     }
                 }
