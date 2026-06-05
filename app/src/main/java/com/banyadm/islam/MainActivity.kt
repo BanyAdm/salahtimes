@@ -3,6 +3,8 @@ package com.banyadm.islam
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.*
 import com.banyadm.islam.data.SalahPreferences
 import com.banyadm.islam.ui.MainScreen
@@ -22,8 +24,37 @@ class MainActivity : ComponentActivity() {
                 when {
                     setupDone == null -> {}
                     !setupDone!! -> SetupScreen(onSetupComplete = {})
-                    showSettings -> SettingsScreen(onBack = { showSettings = false })
-                    else -> MainScreen(onSettingsClick = { showSettings = true })
+                    else -> {
+                        AnimatedContent(
+                            targetState = showSettings,
+                            transitionSpec = {
+                                if (targetState) {
+                                    slideInHorizontally(
+                                        initialOffsetX = { it },
+                                        animationSpec = tween(350)
+                                    ) togetherWith slideOutHorizontally(
+                                        targetOffsetX = { -it / 3 },
+                                        animationSpec = tween(350)
+                                    )
+                                } else {
+                                    slideInHorizontally(
+                                        initialOffsetX = { -it / 3 },
+                                        animationSpec = tween(350)
+                                    ) togetherWith slideOutHorizontally(
+                                        targetOffsetX = { it },
+                                        animationSpec = tween(350)
+                                    )
+                                }
+                            },
+                            label = "nav"
+                        ) { inSettings ->
+                            if (inSettings) {
+                                SettingsScreen(onBack = { showSettings = false })
+                            } else {
+                                MainScreen(onSettingsClick = { showSettings = true })
+                            }
+                        }
+                    }
                 }
             }
         }
