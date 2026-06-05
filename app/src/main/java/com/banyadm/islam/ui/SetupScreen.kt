@@ -166,7 +166,7 @@ fun SetupScreen(onSetupComplete: () -> Unit) {
                                         step = 3
                                     }
                                 } else {
-                                    statusText = "Could not get location. Make sure Wi-Fi or mobile data is on."
+                                    statusText = "Could not get location. Make sure GPS is enabled."
                                     step = 2
                                 }
                             } catch (e: Exception) {
