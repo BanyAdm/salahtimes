@@ -24,7 +24,9 @@ import com.banyadm.islam.alarm.AlarmScheduler
 import com.banyadm.islam.data.PrayerRepository
 import com.banyadm.islam.data.SalahPreferences
 import com.banyadm.islam.worker.PrayerSyncWorker
+import com.google.android.gms.location.CurrentLocationRequest
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -39,8 +41,10 @@ fun SetupScreen(onSetupComplete: () -> Unit) {
     val locationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { perms ->
-        if (perms[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
+        if (perms[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            perms[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
             step = 3
+            statusText = ""
         } else {
             statusText = "Location permission is needed to calculate prayer times."
         }
@@ -49,10 +53,8 @@ fun SetupScreen(onSetupComplete: () -> Unit) {
     val notifLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) {
-        locationLauncher.launch(arrayOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        ))
+        // after notification permission (granted or denied), go to location step
+        step = 2
     }
 
     Box(
@@ -103,7 +105,7 @@ fun SetupScreen(onSetupComplete: () -> Unit) {
                             notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                         }
                     } else {
-                        LaunchedEffect(Unit) { step = 2 }
+                        SetupButton("Next") { step = 2 }
                     }
                 }
                 2 -> {
@@ -134,10 +136,14 @@ fun SetupScreen(onSetupComplete: () -> Unit) {
                         context.startActivity(intent)
                         step = 4
                     }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    TextButton(onClick = { step = 4 }) {
+                        Text("Skip for now", color = Color(0xFF546E7A), fontSize = 13.sp)
+                    }
                 }
                 4 -> {
                     Text(
-                        text = "All set! Fetching your prayer times now...",
+                        text = "Fetching your prayer times...",
                         color = Color(0xFFB0BEC5),
                         textAlign = TextAlign.Center,
                         fontSize = 15.sp
@@ -147,7 +153,10 @@ fun SetupScreen(onSetupComplete: () -> Unit) {
                         scope.launch {
                             try {
                                 val fusedClient = LocationServices.getFusedLocationProviderClient(context)
-                                val loc = fusedClient.lastLocation.await()
+                                val request = CurrentLocationRequest.Builder()
+                                    .setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY)
+                                    .build()
+                                val loc = fusedClient.getCurrentLocation(request, null).await()
                                 if (loc != null) {
                                     val prefs = SalahPreferences(context)
                                     prefs.setLocation(loc.latitude, loc.longitude)
@@ -163,7 +172,7 @@ fun SetupScreen(onSetupComplete: () -> Unit) {
                                     PrayerSyncWorker.scheduleTomorrow(context)
                                     onSetupComplete()
                                 } else {
-                                    statusText = "Could not get location. Please try again."
+                                    statusText = "Could not get location. Make sure GPS is on."
                                     step = 2
                                 }
                             } catch (e: Exception) {
@@ -176,7 +185,12 @@ fun SetupScreen(onSetupComplete: () -> Unit) {
             }
 
             if (statusText.isNotEmpty()) {
-                Text(text = statusText, color = Color(0xFFEF9A9A), textAlign = TextAlign.Center)
+                Text(
+                    text = statusText,
+                    color = Color(0xFFEF9A9A),
+                    textAlign = TextAlign.Center,
+                    fontSize = 13.sp
+                )
             }
         }
     }
