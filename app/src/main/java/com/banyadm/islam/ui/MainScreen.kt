@@ -1,5 +1,6 @@
 package com.banyadm.islam.ui
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -7,6 +8,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -29,14 +32,14 @@ fun MainScreen(onSettingsClick: () -> Unit) {
 
     val cachedTimes by prefs.cachedTimes.collectAsState(initial = null)
     val toggles by prefs.prayerToggles.collectAsState(initial = emptyMap())
-
     val nextPrayer = remember(cachedTimes) { getNextPrayer(cachedTimes) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF0D1B2A))
-            .statusBarsPadding().padding(20.dp)
+            .statusBarsPadding()
+            .padding(20.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -55,24 +58,15 @@ fun MainScreen(onSettingsClick: () -> Unit) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Text(
-            text = "صلاة",
-            color = Color(0xFFD4AF37),
-            fontSize = 40.sp,
-            fontWeight = FontWeight.Light
-        )
-        Text(
-            text = "Salah Times",
-            color = Color.White,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold
-        )
+        Text("صلاة", color = Color(0xFFD4AF37), fontSize = 40.sp, fontWeight = FontWeight.Light)
+        Text("Salah Times", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
 
         Spacer(modifier = Modifier.height(24.dp))
 
         if (cachedTimes == null) {
-            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Color(0xFFD4AF37))
+            repeat(5) {
+                ShimmerPrayerCard()
+                Spacer(modifier = Modifier.height(10.dp))
             }
         } else {
             val times = cachedTimes!!
@@ -104,6 +98,35 @@ fun MainScreen(onSettingsClick: () -> Unit) {
 }
 
 @Composable
+fun ShimmerPrayerCard() {
+    val transition = rememberInfiniteTransition(label = "shimmer")
+    val translateAnim by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer"
+    )
+    val shimmerBrush = Brush.linearGradient(
+        colors = listOf(
+            Color(0xFF1A2E40),
+            Color(0xFF2A4560),
+            Color(0xFF1A2E40)
+        ),
+        start = Offset(translateAnim - 200f, 0f),
+        end = Offset(translateAnim, 0f)
+    )
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(80.dp)
+            .background(shimmerBrush, RoundedCornerShape(14.dp))
+    )
+}
+
+@Composable
 fun PrayerCard(
     prayer: Prayer,
     time: String,
@@ -127,24 +150,10 @@ fun PrayerCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = prayer.arabic,
-                    color = Color(0xFFD4AF37),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Light
-                )
-                Text(
-                    text = prayer.displayName,
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium
-                )
+                Text(prayer.arabic, color = Color(0xFFD4AF37), fontSize = 18.sp, fontWeight = FontWeight.Light)
+                Text(prayer.displayName, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
                 if (isNext) {
-                    Text(
-                        text = "Next prayer",
-                        color = Color(0xFFD4AF37),
-                        fontSize = 11.sp
-                    )
+                    Text("Next prayer", color = Color(0xFFD4AF37), fontSize = 11.sp)
                 }
             }
             Text(

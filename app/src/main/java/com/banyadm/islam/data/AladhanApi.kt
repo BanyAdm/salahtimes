@@ -1,38 +1,27 @@
 package com.banyadm.islam.data
 
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.http.GET
-import retrofit2.http.Path
-import retrofit2.http.Query
-
-data class AladhanResponse(val code: Int, val data: AladhanData)
-data class AladhanData(val timings: AladhanTimings, val date: AladhanDate)
-data class AladhanTimings(
-    val Fajr: String,
-    val Dhuhr: String,
-    val Asr: String,
-    val Maghrib: String,
-    val Isha: String
-)
-data class AladhanDate(val readable: String)
-
-interface AladhanService {
-    @GET("timings/{date}")
-    suspend fun getTimings(
-        @Path("date") date: String,
-        @Query("latitude") latitude: Double,
-        @Query("longitude") longitude: Double,
-        @Query("method") method: Int = 3
-    ): AladhanResponse
-}
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 
 object AladhanApi {
-    val service: AladhanService by lazy {
-        Retrofit.Builder()
-            .baseUrl("https://api.aladhan.com/v1/")
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-            .create(AladhanService::class.java)
+    suspend fun fetchTimings(lat: Double, lon: Double, method: Int, date: String): JSONObject? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val url = URL("https://api.aladhan.com/v1/timings/$date?latitude=$lat&longitude=$lon&method=$method")
+                val conn = url.openConnection() as HttpURLConnection
+                conn.requestMethod = "GET"
+                conn.connectTimeout = 10000
+                conn.readTimeout = 10000
+                conn.setRequestProperty("User-Agent", "SalahTimes/1.0")
+                val response = conn.inputStream.bufferedReader().readText()
+                conn.disconnect()
+                JSONObject(response)
+            } catch (e: Exception) {
+                null
+            }
+        }
     }
 }
