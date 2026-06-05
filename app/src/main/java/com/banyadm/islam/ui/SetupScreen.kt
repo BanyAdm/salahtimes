@@ -24,12 +24,12 @@ import com.banyadm.islam.alarm.AlarmScheduler
 import com.banyadm.islam.data.PrayerRepository
 import com.banyadm.islam.data.SalahPreferences
 import com.banyadm.islam.worker.PrayerSyncWorker
-import com.google.android.gms.location.CurrentLocationRequest
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
 
 @Composable
 fun SetupScreen(onSetupComplete: () -> Unit) {
@@ -52,15 +52,13 @@ fun SetupScreen(onSetupComplete: () -> Unit) {
 
     val notifLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) {
-        // after notification permission (granted or denied), go to location step
-        step = 2
-    }
+    ) { step = 2 }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0D1B2A)),
+            .background(Color(0xFF0D1B2A))
+            .statusBarsPadding(),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -68,37 +66,22 @@ fun SetupScreen(onSetupComplete: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(20.dp),
             modifier = Modifier.padding(32.dp)
         ) {
-            Text(
-                text = "بسم الله",
-                color = Color(0xFFD4AF37),
-                fontSize = 36.sp,
-                fontWeight = FontWeight.Light
-            )
-            Text(
-                text = "Salah Times",
-                color = Color.White,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold
-            )
-
+            Text("بسم الله", color = Color(0xFFD4AF37), fontSize = 36.sp, fontWeight = FontWeight.Light)
+            Text("Salah Times", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
 
             when (step) {
                 0 -> {
                     Text(
-                        text = "This app needs a few permissions to deliver prayer alarms reliably.",
-                        color = Color(0xFFB0BEC5),
-                        textAlign = TextAlign.Center,
-                        fontSize = 15.sp
+                        "This app needs a few permissions to deliver prayer alarms reliably.",
+                        color = Color(0xFFB0BEC5), textAlign = TextAlign.Center, fontSize = 15.sp
                     )
                     SetupButton("Get Started") { step = 1 }
                 }
                 1 -> {
                     Text(
-                        text = "Step 1 of 3\n\nAllow notifications so prayer alarms can appear on your screen.",
-                        color = Color(0xFFB0BEC5),
-                        textAlign = TextAlign.Center,
-                        fontSize = 15.sp
+                        "Step 1 of 3\n\nAllow notifications so prayer alarms can appear on your screen.",
+                        color = Color(0xFFB0BEC5), textAlign = TextAlign.Center, fontSize = 15.sp
                     )
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         SetupButton("Allow Notifications") {
@@ -110,10 +93,8 @@ fun SetupScreen(onSetupComplete: () -> Unit) {
                 }
                 2 -> {
                     Text(
-                        text = "Step 2 of 3\n\nAllow location access to calculate accurate prayer times.",
-                        color = Color(0xFFB0BEC5),
-                        textAlign = TextAlign.Center,
-                        fontSize = 15.sp
+                        "Step 2 of 3\n\nAllow location access to calculate accurate prayer times.",
+                        color = Color(0xFFB0BEC5), textAlign = TextAlign.Center, fontSize = 15.sp
                     )
                     SetupButton("Allow Location") {
                         locationLauncher.launch(arrayOf(
@@ -124,10 +105,8 @@ fun SetupScreen(onSetupComplete: () -> Unit) {
                 }
                 3 -> {
                     Text(
-                        text = "Step 3 of 3\n\nDisable battery optimization so alarms are never missed.",
-                        color = Color(0xFFB0BEC5),
-                        textAlign = TextAlign.Center,
-                        fontSize = 15.sp
+                        "Step 3 of 3\n\nDisable battery optimization so alarms are never missed.",
+                        color = Color(0xFFB0BEC5), textAlign = TextAlign.Center, fontSize = 15.sp
                     )
                     SetupButton("Disable Battery Optimization") {
                         val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
@@ -136,43 +115,58 @@ fun SetupScreen(onSetupComplete: () -> Unit) {
                         context.startActivity(intent)
                         step = 4
                     }
-                    Spacer(modifier = Modifier.height(4.dp))
                     TextButton(onClick = { step = 4 }) {
                         Text("Skip for now", color = Color(0xFF546E7A), fontSize = 13.sp)
                     }
                 }
                 4 -> {
                     Text(
-                        text = "Fetching your prayer times...",
-                        color = Color(0xFFB0BEC5),
-                        textAlign = TextAlign.Center,
-                        fontSize = 15.sp
+                        "Fetching your prayer times...",
+                        color = Color(0xFFB0BEC5), textAlign = TextAlign.Center, fontSize = 15.sp
                     )
                     CircularProgressIndicator(color = Color(0xFFD4AF37))
                     LaunchedEffect(Unit) {
                         scope.launch {
                             try {
                                 val fusedClient = LocationServices.getFusedLocationProviderClient(context)
-                                val request = CurrentLocationRequest.Builder()
-                                    .setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY)
-                                    .build()
-                                val loc = fusedClient.getCurrentLocation(request, null).await()
-                                if (loc != null) {
+
+                                // try lastLocation first, fall back to getCurrentLocation with timeout
+                                var lat: Double? = null
+                                var lon: Double? = null
+
+                                val last = fusedClient.lastLocation.await()
+                                if (last != null) {
+                                    lat = last.latitude
+                                    lon = last.longitude
+                                } else {
+                                    val loc = withTimeoutOrNull(10_000) {
+                                        fusedClient.getCurrentLocation(
+                                            Priority.PRIORITY_BALANCED_POWER_ACCURACY, null
+                                        ).await()
+                                    }
+                                    lat = loc?.latitude
+                                    lon = loc?.longitude
+                                }
+
+                                if (lat != null && lon != null) {
                                     val prefs = SalahPreferences(context)
-                                    prefs.setLocation(loc.latitude, loc.longitude)
+                                    prefs.setLocation(lat, lon)
                                     val method = prefs.calcMethod.first()
-                                    val result = PrayerRepository().fetchTimes(loc.latitude, loc.longitude, method)
+                                    val result = PrayerRepository().fetchTimes(lat, lon, method)
                                     if (result.isSuccess) {
                                         val times = result.getOrThrow()
                                         prefs.cacheTimes(times)
                                         val toggles = prefs.prayerToggles.first()
                                         AlarmScheduler.scheduleAll(context, times, toggles)
+                                        prefs.setSetupDone(true)
+                                        PrayerSyncWorker.scheduleTomorrow(context)
+                                        onSetupComplete()
+                                    } else {
+                                        statusText = "Could not fetch prayer times. Check internet."
+                                        step = 3
                                     }
-                                    prefs.setSetupDone(true)
-                                    PrayerSyncWorker.scheduleTomorrow(context)
-                                    onSetupComplete()
                                 } else {
-                                    statusText = "Could not get location. Make sure GPS is on."
+                                    statusText = "Could not get location. Make sure Wi-Fi or mobile data is on."
                                     step = 2
                                 }
                             } catch (e: Exception) {
@@ -185,12 +179,7 @@ fun SetupScreen(onSetupComplete: () -> Unit) {
             }
 
             if (statusText.isNotEmpty()) {
-                Text(
-                    text = statusText,
-                    color = Color(0xFFEF9A9A),
-                    textAlign = TextAlign.Center,
-                    fontSize = 13.sp
-                )
+                Text(statusText, color = Color(0xFFEF9A9A), textAlign = TextAlign.Center, fontSize = 13.sp)
             }
         }
     }

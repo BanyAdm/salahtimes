@@ -36,7 +36,7 @@ fun MainScreen(onSettingsClick: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF0D1B2A))
-            .padding(20.dp)
+            .statusBarsPadding().padding(20.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
