@@ -14,6 +14,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
+import androidx.compose.foundation.layout.FlowRow
+import kotlinx.coroutines.flow.first
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,9 +38,10 @@ fun SettingsScreen(onBack: () -> Unit) {
     val prefs = remember { SalahPreferences(context) }
     val scope = rememberCoroutineScope()
 
-    val snoozeCount by prefs.snoozeCount.collectAsState(initial = 3)
-    val snoozeDuration by prefs.snoozeDuration.collectAsState(initial = 5)
     val calcMethod by prefs.calcMethod.collectAsState(initial = 3)
+    val reminderToggles by prefs.reminderToggles.collectAsState(initial = emptyMap())
+    val reminderMinutes by prefs.reminderMinutes.collectAsState(initial = 15)
+    val cachedTimes by prefs.cachedTimes.collectAsState(initial = null)
 
     var testAlarmActive by remember { mutableStateOf(false) }
     var testCountdown by remember { mutableStateOf(0) }
@@ -71,15 +74,73 @@ fun SettingsScreen(onBack: () -> Unit) {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Snooze settings
-        SettingsSection("Snooze") {
-            SettingsRow("Times allowed") {
-                StepCounter(value = snoozeCount, min = 0, max = 10,
-                    onValueChange = { scope.launch { prefs.setSnooze(it, snoozeDuration) } })
-            }
-            SettingsRow("Duration (minutes)") {
-                StepCounter(value = snoozeDuration, min = 1, max = 30,
-                    onValueChange = { scope.launch { prefs.setSnooze(snoozeCount, it) } })
+        // Reminder settings
+        SettingsSection("Reminder Alarms") {
+            Text(
+                "Get a notification before each prayer. Time is calculated based on prayer gaps.",
+                color = Color(0xFFB0BEC5), fontSize = 12.sp,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            if (cachedTimes != null) {
+                val times = cachedTimes!!
+                val prayerTimes = listOf(
+                    com.banyadm.islam.data.Prayer.FAJR to times.fajr,
+                    com.banyadm.islam.data.Prayer.DHUHR to times.dhuhr,
+                    com.banyadm.islam.data.Prayer.ASR to times.asr,
+                    com.banyadm.islam.data.Prayer.MAGHRIB to times.maghrib,
+                    com.banyadm.islam.data.Prayer.ISHA to times.isha
+                )
+                // Reminder minutes selector
+                val allTimes = prayerTimes.map { (_, t) -> t }
+                val gaps = allTimes.zipWithNext { a, b ->
+                    val sdf = java.text.SimpleDateFormat("HH:mm", java.util.Locale.US)
+                    val ta = sdf.parse(a)!!
+                    val tb = sdf.parse(b)!!
+                    ((tb.time - ta.time) / 60000).toInt().let { if (it < 0) it + 1440 else it }
+                }
+                val minGap = gaps.minOrNull() ?: 60
+                val options = com.banyadm.islam.data.calculateReminderOptions(minGap)
+                if (options.isNotEmpty()) {
+                    SettingsRow("Reminder time") {
+                        Row { options.forEach { mins ->
+                            FilterChip(
+                                selected = reminderMinutes == mins,
+                                onClick = { scope.launch { prefs.setReminderMinutes(mins) } },
+                                label = { Text("${mins}m", fontSize = 12.sp) },
+                                modifier = Modifier.padding(end = 4.dp),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Color(0xFFD4AF37),
+                                    selectedLabelColor = Color(0xFF0D1B2A)
+                                )
+                            )
+                        }}
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                prayerTimes.forEach { (prayer, _) ->
+                    SettingsRow(prayer.displayName) {
+                        Switch(
+                            checked = reminderToggles[prayer] ?: false,
+                            onCheckedChange = { enabled ->
+                                scope.launch {
+                                    prefs.setReminderToggle(prayer, enabled)
+                                    val toggles = prefs.prayerToggles.first()
+                                    val remToggles = prefs.reminderToggles.first()
+                                    val remMins = prefs.reminderMinutes.first()
+                                    com.banyadm.islam.alarm.AlarmScheduler.scheduleAll(
+                                        context, times, toggles, remToggles, remMins
+                                    )
+                                }
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color(0xFFD4AF37),
+                                checkedTrackColor = Color(0xFF3D5A47)
+                            )
+                        )
+                    }
+                }
+            } else {
+                Text("Prayer times not loaded yet.", color = Color(0xFF546E7A), fontSize = 13.sp)
             }
         }
 

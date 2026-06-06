@@ -16,3 +16,10 @@ enum class Prayer(val displayName: String, val arabic: String, val prefKey: Stri
     MAGHRIB("Maghrib", "المغرب", "maghrib_enabled"),
     ISHA("Isha", "العشاء", "isha_enabled")
 }
+
+// Reminder minutes options are calculated dynamically based on gap between prayers
+// We divide gap by 2, 3, 4 and filter to reasonable values (max 60 min, min 5 min)
+fun calculateReminderOptions(gapMinutes: Int): List<Int> {
+    val raw = listOf(2, 3, 4, 5, 6).map { gapMinutes / it }
+    return raw.filter { it in 5..60 }.distinct().sorted()
+}

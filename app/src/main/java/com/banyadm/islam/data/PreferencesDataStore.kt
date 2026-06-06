@@ -14,6 +14,12 @@ object Keys {
     val ASR_ENABLED = booleanPreferencesKey("asr_enabled")
     val MAGHRIB_ENABLED = booleanPreferencesKey("maghrib_enabled")
     val ISHA_ENABLED = booleanPreferencesKey("isha_enabled")
+    val FAJR_REMINDER = booleanPreferencesKey("fajr_reminder")
+    val DHUHR_REMINDER = booleanPreferencesKey("dhuhr_reminder")
+    val ASR_REMINDER = booleanPreferencesKey("asr_reminder")
+    val MAGHRIB_REMINDER = booleanPreferencesKey("maghrib_reminder")
+    val ISHA_REMINDER = booleanPreferencesKey("isha_reminder")
+    val REMINDER_MINUTES = intPreferencesKey("reminder_minutes")
     val SNOOZE_COUNT = intPreferencesKey("snooze_count")
     val SNOOZE_DURATION = intPreferencesKey("snooze_duration")
     val LATITUDE = stringPreferencesKey("latitude")
@@ -50,6 +56,20 @@ class SalahPreferences(private val context: Context) {
     val snoozeDuration: Flow<Int> = context.dataStore.data
         .map { it[Keys.SNOOZE_DURATION] ?: 5 }
 
+
+    val reminderToggles: Flow<Map<Prayer, Boolean>> = context.dataStore.data
+        .map { prefs ->
+            mapOf(
+                Prayer.FAJR to (prefs[Keys.FAJR_REMINDER] ?: false),
+                Prayer.DHUHR to (prefs[Keys.DHUHR_REMINDER] ?: false),
+                Prayer.ASR to (prefs[Keys.ASR_REMINDER] ?: false),
+                Prayer.MAGHRIB to (prefs[Keys.MAGHRIB_REMINDER] ?: false),
+                Prayer.ISHA to (prefs[Keys.ISHA_REMINDER] ?: false)
+            )
+        }
+
+    val reminderMinutes: Flow<Int> = context.dataStore.data
+        .map { it[Keys.REMINDER_MINUTES] ?: 15 }
     val location: Flow<Pair<Double, Double>?> = context.dataStore.data
         .map { prefs ->
             val lat = prefs[Keys.LATITUDE]?.toDoubleOrNull()
@@ -92,6 +112,22 @@ class SalahPreferences(private val context: Context) {
             prefs[Keys.SNOOZE_COUNT] = count
             prefs[Keys.SNOOZE_DURATION] = duration
         }
+    }
+
+    suspend fun setReminderToggle(prayer: Prayer, enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            when (prayer) {
+                Prayer.FAJR -> prefs[Keys.FAJR_REMINDER] = enabled
+                Prayer.DHUHR -> prefs[Keys.DHUHR_REMINDER] = enabled
+                Prayer.ASR -> prefs[Keys.ASR_REMINDER] = enabled
+                Prayer.MAGHRIB -> prefs[Keys.MAGHRIB_REMINDER] = enabled
+                Prayer.ISHA -> prefs[Keys.ISHA_REMINDER] = enabled
+            }
+        }
+    }
+
+    suspend fun setReminderMinutes(minutes: Int) {
+        context.dataStore.edit { it[Keys.REMINDER_MINUTES] = minutes }
     }
 
     suspend fun setLocation(lat: Double, lon: Double) {
