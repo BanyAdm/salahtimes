@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.*
+import androidx.activity.compose.BackHandler
 import com.banyadm.islam.data.SalahPreferences
 import com.banyadm.islam.ui.MainScreen
 import com.banyadm.islam.ui.SetupScreen
@@ -29,6 +30,7 @@ class MainActivity : ComponentActivity() {
             SalahTheme {
                 val setupDone by prefs.isSetupDone.collectAsState(initial = null)
                 var showSettings by remember { mutableStateOf(false) }
+                BackHandler(enabled = showSettings) { showSettings = false }
                 val scope = rememberCoroutineScope()
 
                 // Lifted state — survives settings navigation
