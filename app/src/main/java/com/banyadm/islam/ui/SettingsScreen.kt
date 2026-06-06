@@ -101,8 +101,9 @@ fun SettingsScreen(onBack: () -> Unit) {
                 val minGap = gaps.minOrNull() ?: 60
                 val options = com.banyadm.islam.data.calculateReminderOptions(minGap)
                 if (options.isNotEmpty()) {
-                    SettingsRow("Reminder time") {
-                        Row { options.forEach { mins ->
+                    Text("Reminder time", color = Color.White, fontSize = 15.sp)
+                    FlowRow(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
+                        options.forEach { mins ->
                             FilterChip(
                                 selected = reminderMinutes == mins,
                                 onClick = { scope.launch { prefs.setReminderMinutes(mins) } },
@@ -113,7 +114,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                                     selectedLabelColor = Color(0xFF0D1B2A)
                                 )
                             )
-                        }}
+                        }
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
