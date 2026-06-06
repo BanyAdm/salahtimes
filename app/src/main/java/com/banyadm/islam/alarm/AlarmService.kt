@@ -16,7 +16,15 @@ class AlarmService : Service() {
     private var mediaPlayer: MediaPlayer? = null
     private var vibrator: Vibrator? = null
 
-    companion object { const val ACTION_DISMISS = "com.banyadm.islam.DISMISS_ALARM" }
+    companion object {
+        const val ACTION_DISMISS = "com.banyadm.islam.DISMISS_ALARM"
+        var instance: AlarmService? = null
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        instance = this
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_DISMISS) {
@@ -112,6 +120,7 @@ class AlarmService : Service() {
     }
 
     override fun onDestroy() {
+        instance = null
         mediaPlayer?.release()
         vibrator?.cancel()
         super.onDestroy()
