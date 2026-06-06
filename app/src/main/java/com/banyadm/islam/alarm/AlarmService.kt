@@ -16,7 +16,13 @@ class AlarmService : Service() {
     private var mediaPlayer: MediaPlayer? = null
     private var vibrator: Vibrator? = null
 
+    companion object { const val ACTION_DISMISS = "com.banyadm.islam.DISMISS_ALARM" }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_DISMISS) {
+            stopAlarm()
+            return START_NOT_STICKY
+        }
         val prayerName = intent?.getStringExtra("prayer_name") ?: "Prayer"
         val prayerArabic = intent?.getStringExtra("prayer_arabic") ?: ""
         val prayerId = intent?.getIntExtra("prayer_id", 0) ?: 0
@@ -96,6 +102,13 @@ class AlarmService : Service() {
         vibrator?.cancel()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        // Reschedule alarms if task is removed
+        val intent = Intent(this, BootReceiver::class.java)
+        sendBroadcast(intent)
+        super.onTaskRemoved(rootIntent)
     }
 
     override fun onDestroy() {
