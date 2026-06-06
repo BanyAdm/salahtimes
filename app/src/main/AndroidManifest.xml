@@ -53,5 +53,6 @@
             </intent-filter>
         </receiver>
 
+        <service android:name=".alarm.AlarmService" android:exported="false" android:foregroundServiceType="shortService"/>
     </application>
 </manifest>
