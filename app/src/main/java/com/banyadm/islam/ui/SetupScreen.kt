@@ -211,7 +211,7 @@ fun SetupScreen(onSetupComplete: () -> Unit) {
 
 @Composable
 fun ShimmerSetupCard() {
-    androidx.compose.animation.core.rememberInfiniteTransition(label = "shimmer").let { transition ->
+    val transition = rememberInfiniteTransition(label = "shimmer")
         val translateAnim by transition.animateFloat(
             initialValue = 0f, targetValue = 1000f,
             animationSpec = androidx.compose.animation.core.infiniteRepeatable(
@@ -232,7 +232,6 @@ fun ShimmerSetupCard() {
                     RoundedCornerShape(12.dp)
                 )
         )
-    }
 }
 
 @Composable
