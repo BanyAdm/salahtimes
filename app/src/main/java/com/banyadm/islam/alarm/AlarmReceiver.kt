@@ -12,6 +12,7 @@ class AlarmReceiver : BroadcastReceiver() {
             putExtra("prayer_arabic", intent.getStringExtra("prayer_arabic"))
             putExtra("prayer_id", intent.getIntExtra("prayer_id", 0))
         }
+        android.util.Log.d("SalahAlarm", "AlarmReceiver fired!")
         ContextCompat.startForegroundService(context, serviceIntent)
     }
 }
