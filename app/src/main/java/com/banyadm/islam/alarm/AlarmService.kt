@@ -27,6 +27,7 @@ class AlarmService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        android.util.Log.e("SALAH_SERVICE", "onStartCommand action=${intent?.action}")
         if (intent?.action == ACTION_DISMISS) {
             stopAlarm()
             return START_NOT_STICKY
