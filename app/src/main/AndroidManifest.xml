@@ -19,7 +19,6 @@
         android:allowBackup="true"
         android:label="Salah Times"
         android:icon="@mipmap/ic_launcher"
-        
         android:theme="@style/Theme.SalahTimes"
         android:supportsRtl="true">
 
@@ -40,20 +39,15 @@
             android:launchMode="singleInstance"
             android:excludeFromRecents="true"/>
 
-        <receiver
-            android:name=".alarm.AlarmReceiver"
+        <receiver android:name=".alarm.AlarmReceiver" android:exported="true"/>
         <receiver android:name=".alarm.AlarmDismissReceiver" android:exported="false"/>
-            android:exported="true"/>
 
-        <receiver
-            android:name=".alarm.BootReceiver"
-            android:exported="true">
+        <receiver android:name=".alarm.BootReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
             </intent-filter>
         </receiver>
 
-        
     </application>
 </manifest>
