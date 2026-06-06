@@ -147,6 +147,7 @@ class AlarmScreenActivity : ComponentActivity() {
     }
 
     private fun dismiss() {
+        AlarmReceiver.stopAlarm()
         stopService(Intent(this, AlarmService::class.java))
         finish()
     }
