@@ -24,7 +24,9 @@ class PrayerSyncWorker(context: Context, params: WorkerParameters) :
         return if (result.isSuccess) {
             val times = result.getOrThrow()
             prefs.cacheTimes(times)
-            AlarmScheduler.scheduleAll(applicationContext, times, toggles)
+            val remToggles = prefs.reminderToggles.first()
+            val remMins = prefs.reminderMinutes.first()
+            AlarmScheduler.scheduleAll(applicationContext, times, toggles, remToggles, remMins)
             scheduleTomorrow(applicationContext)
             Result.success()
         } else {

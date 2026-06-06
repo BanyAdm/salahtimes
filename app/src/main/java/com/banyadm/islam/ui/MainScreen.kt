@@ -136,7 +136,9 @@ fun MainScreen(
                         scope.launch {
                             prefs.setToggle(prayer, enabled)
                             val allToggles = prefs.prayerToggles.first()
-                            AlarmScheduler.scheduleAll(context, times, allToggles)
+                            val remToggles = prefs.reminderToggles.first()
+                            val remMins = prefs.reminderMinutes.first()
+                            AlarmScheduler.scheduleAll(context, times, allToggles, remToggles, remMins)
                         }
                     }
                 )
