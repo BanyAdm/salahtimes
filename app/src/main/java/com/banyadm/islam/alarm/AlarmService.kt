@@ -23,7 +23,7 @@ class AlarmService : Service() {
         ).also { it.acquire(60_000L) }
 
         val fullScreenIntent = Intent(this, AlarmScreenActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             putExtra("prayer_name", prayerName)
             putExtra("prayer_arabic", prayerArabic)
             putExtra("prayer_id", prayerId)
